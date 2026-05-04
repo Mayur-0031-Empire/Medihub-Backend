@@ -1,135 +1,231 @@
 # MediHub Backend
 
-Express + MongoDB Atlas backend for user registration, login, logout, token refresh, and profile updates.
+MediHub Backend is an Express and MongoDB API for a telemedicine platform. It supports user authentication, doctor verification, appointments, WebRTC signaling, AI health chat, AI-assisted consultation drafts, BMI guidance, and nearby hospital discovery.
 
-## Setup
+## Features
 
-1. Install dependencies:
+- User registration, login, logout, refresh tokens, and profile management
+- HTTP-only cookie based authentication with JWT access and refresh tokens
+- Patient, doctor, and admin role-based access control
+- Doctor profile creation with qualification document upload and admin verification
+- Appointment slot creation, booking, consultation notes, reports, prescriptions, and cancellation flow
+- Socket.IO signaling for WebRTC consultation rooms
+- Gemini-powered AI health chatbot and consultation draft generation
+- Cloudinary-backed image and document upload handling
+- Public BMI Buddy calculator with diet, workout, and lifestyle recommendations
+- Public nearby hospital locator using Google Places API
+- Local hospital profile storage support through MongoDB
+
+## Tech Stack
+
+- Node.js
+- Express
+- MongoDB and Mongoose
+- Socket.IO
+- JWT
+- Multer
+- Cloudinary
+- Gemini API
+- Google Places API
+
+## Project Structure
+
+```txt
+src/
+  app.js
+  server.js
+  config/
+  controllers/
+  middleware/
+  models/
+  routes/
+  services/
+  utils/
+public/
+  temp/
+```
+
+## Getting Started
+
+### 1. Install Dependencies
 
 ```bash
 npm install
 ```
 
-2. Create `.env` from `.env.example` and add your MongoDB Atlas URI plus JWT secrets.
+### 2. Configure Environment
 
-3. Start the API:
+Create a `.env` file from `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Then fill in the required values.
+
+### 3. Start Development Server
 
 ```bash
 npm run dev
 ```
 
-## Endpoints
-
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/refresh`
-- `POST /api/auth/logout`
-- `GET /api/users/me`
-- `PATCH /api/users/me`
-- `GET /api/bmi-buddy`
-- `POST /api/bmi-buddy/calculate`
-- `GET /api/hospital-locator/nearby`
-- `GET /api/hospital-locator/hospitals`
-
-## Register body
-
-Use Postman `Body -> form-data`:
+The API runs on:
 
 ```txt
-firstName: Asha
-lastName: Sharma
-username: asha_sharma
-role: patient
-email: asha@example.com
-phone: +919999999999
-password: StrongPass123
-confirmPassword: StrongPass123
-photo: choose file
+http://localhost:5000
 ```
 
-The photo is first saved locally in `public/temp`, uploaded to Cloudinary, then removed locally. MongoDB stores the Cloudinary URL in `photo`.
+### 4. Start Production Server
 
-## Login body
-
-Use `identifier`, `usernameOrEmail`, `username`, or `email`.
-
-```json
-{
-  "identifier": "asha@example.com",
-  "password": "StrongPass123"
-}
+```bash
+npm start
 ```
 
-Register and login set `accessToken` and `refreshToken` as HTTP-only cookies. Postman stores those cookies automatically for `localhost`, so you do not need to paste tokens manually for the protected routes.
+## Environment Variables
 
-## Update patient/user details
+### Required Core Variables
 
-Call this after register/login. The saved cookies authenticate the request automatically.
-
-```http
-PATCH /api/users/me
+```env
+PORT=5000
+MONGODB_URI=your_mongodb_connection_string
+ACCESS_TOKEN_SECRET=your_access_token_secret
+REFRESH_TOKEN_SECRET=your_refresh_token_secret
+ACCESS_TOKEN_EXPIRES_IN=15m
+REFRESH_TOKEN_EXPIRES_IN=7d
+CLIENT_ORIGIN=http://localhost:3000
 ```
 
-```json
-{
-  "gender": "female",
-  "address": "Mumbai, Maharashtra",
-  "bloodGroup": "O+",
-  "age": 28
-}
+### Uploads
+
+Required for profile photos, doctor documents, reports, and attachments:
+
+```env
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 ```
 
-This route accepts text fields only: `firstName`, `lastName`, `phone`, `role`, `gender`, `address`, `bloodGroup`, and `age`. It does not allow `username`, `email`, `photo`, or `password`.
+### AI Features
 
-## Update Photo
+Required for AI chat and AI consultation draft generation:
 
-Use Postman `Body -> form-data`:
-
-```http
-PATCH /api/users/me/photo
+```env
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MAX_OUTPUT_TOKENS=900
 ```
 
-```txt
-photo: choose file
+### Hospital Locator
+
+Required for real nearby hospital search:
+
+```env
+GOOGLE_PLACES_API_KEY=your_server_restricted_google_places_api_key
+GOOGLE_PLACES_LANGUAGE_CODE=en
+GOOGLE_PLACES_REGION_CODE=IN
 ```
 
-The photo is uploaded to Cloudinary and the new Cloudinary URL is saved in MongoDB.
+Optional map configuration:
 
-## Update Password
-
-Use Postman `Body -> raw -> JSON`:
-
-```http
-PATCH /api/users/me/password
+```env
+GOOGLE_MAPS_BROWSER_API_KEY=your_browser_restricted_google_maps_javascript_api_key
+GOOGLE_MAPS_MAP_ID=your_google_maps_map_id
+GOOGLE_MAPS_DEFAULT_ZOOM=12
 ```
 
-```json
-{
-  "oldPassword": "StrongPass123",
-  "newPassword": "NewStrongPass123",
-  "confirmPassword": "NewStrongPass123"
-}
-```
+Keep server secrets such as MongoDB URI, JWT secrets, Cloudinary secret, Gemini key, and Google Places key out of frontend code.
 
-If the access token is missing or expired, protected routes automatically validate the refresh token cookie, issue a new access token cookie, and continue the original request.
+## Authentication
 
-## BMI Buddy
+Register and login issue:
 
-BMI Buddy is public. No login is required.
+- `accessToken`
+- `refreshToken`
 
-### What BMI Means
+Tokens are set as HTTP-only cookies. Protected routes accept either cookies or an `Authorization: Bearer <token>` header where supported.
 
-```http
-GET /api/bmi-buddy
-```
+## API Overview
 
-Returns a very short BMI meaning, the required parameters, and BMI categories.
+### Health
 
-### Calculate BMI And Get Plans
+| Method | Route | Description |
+| --- | --- | --- |
+| GET | `/api/health` | Check API status |
 
-```http
-POST /api/bmi-buddy/calculate
-```
+### Authentication
+
+| Method | Route | Description |
+| --- | --- | --- |
+| POST | `/api/auth/register` | Register user with profile photo |
+| POST | `/api/auth/login` | Login with username or email |
+| POST | `/api/auth/refresh` | Refresh auth tokens |
+| POST | `/api/auth/logout` | Logout and clear cookies |
+
+### User Profile
+
+| Method | Route | Description |
+| --- | --- | --- |
+| GET | `/api/users/me` | Get current user profile |
+| PATCH | `/api/users/me` | Update profile text fields |
+| PATCH | `/api/users/me/photo` | Update profile photo |
+| PATCH | `/api/users/me/password` | Update password |
+
+### Doctors
+
+| Method | Route | Description |
+| --- | --- | --- |
+| GET | `/api/doctors` | List public verified doctors |
+| GET | `/api/doctors/me` | Get logged-in doctor's profile |
+| POST | `/api/doctors/me` | Create doctor profile |
+| PATCH | `/api/doctors/me` | Update doctor profile |
+| POST | `/api/doctors/me/documents` | Add doctor qualification documents |
+| GET | `/api/doctors/admin/pending` | Admin list of pending doctor profiles |
+| PATCH | `/api/doctors/admin/:doctorProfileId/verify` | Admin verify or reject doctor documents |
+
+### Appointments
+
+| Method | Route | Description |
+| --- | --- | --- |
+| GET | `/api/appointments/doctors/:doctorProfileId/slots` | List available doctor slots |
+| GET | `/api/appointments/notifications` | List user notifications |
+| GET | `/api/appointments/me` | List user appointments |
+| POST | `/api/appointments/slots` | Doctor creates availability slots |
+| POST | `/api/appointments/book` | Patient books appointment |
+| GET | `/api/appointments/:appointmentId` | Get appointment details |
+| PATCH | `/api/appointments/:appointmentId/symptoms` | Patient adds symptoms or notes |
+| POST | `/api/appointments/:appointmentId/reports` | Patient uploads reports |
+| PATCH | `/api/appointments/:appointmentId/doctor-notes` | Doctor updates consultation notes |
+| POST | `/api/appointments/:appointmentId/doctor-files` | Doctor uploads consultation files |
+| POST | `/api/appointments/:appointmentId/ai-draft` | Generate AI consultation draft |
+| PATCH | `/api/appointments/:appointmentId/prescription/approve` | Approve prescription |
+| PATCH | `/api/appointments/:appointmentId/cancel-by-doctor` | Doctor cancels appointment |
+
+### AI Chat
+
+| Method | Route | Description |
+| --- | --- | --- |
+| GET | `/api/ai/chats` | List user chats |
+| POST | `/api/ai/chats` | Create chat |
+| POST | `/api/ai/chats/messages` | Send message and create chat if needed |
+| GET | `/api/ai/chats/:chatId` | Get chat |
+| PATCH | `/api/ai/chats/:chatId` | Rename chat |
+| DELETE | `/api/ai/chats/:chatId` | Delete chat |
+| POST | `/api/ai/chats/:chatId/messages` | Send message to existing chat |
+
+### BMI Buddy
+
+| Method | Route | Description |
+| --- | --- | --- |
+| GET | `/api/bmi-buddy` | Get BMI explanation and required parameters |
+| POST | `/api/bmi-buddy/calculate` | Calculate BMI and return health plans |
+
+Example request:
 
 ```json
 {
@@ -138,399 +234,35 @@ POST /api/bmi-buddy/calculate
 }
 ```
 
-The response includes the BMI value, category, and pointwise `dietPlan`, `workoutPlan`, and `lifestylePlan` suggestions to help the user move toward a normal BMI.
+### Hospital Locator
 
-## Nearby Hospital Locator
+| Method | Route | Description |
+| --- | --- | --- |
+| GET | `/api/hospital-locator/map-config` | Get non-secret map configuration |
+| GET | `/api/hospital-locator/photo` | Redirect Google Places photo |
+| GET | `/api/hospital-locator/nearby` | Fetch nearby hospitals from Google Places |
+| GET | `/api/hospital-locator/hospitals` | List local hospital profiles |
+| POST | `/api/hospital-locator/hospitals` | Create local hospital profile |
 
-Hospital locator is public. No login is required. It uses Google Places API for real hospital search and Google Maps JavaScript API config for the frontend map.
-
-Required Google Cloud setup:
-
-- Enable **Places API (New)** for backend nearby hospital search and hospital photos.
-- Enable **Maps JavaScript API** for the frontend map. This key is public by nature, so restrict it by HTTP referrer.
-- Add `GOOGLE_PLACES_API_KEY` as a server-side key.
-- Add `GOOGLE_MAPS_BROWSER_API_KEY` only if you want the backend to confirm map-key configuration; do not expose the server Places key to frontend code.
-- Optionally add `GOOGLE_MAPS_MAP_ID` for Google Maps advanced markers.
-
-### Get Frontend Map Config
-
-```http
-GET /api/hospital-locator/map-config
-```
-
-Returns map ID, libraries, default center, default zoom, and whether a browser map key is configured. It does not return any API key.
-
-Frontend flow:
-
-```txt
-1. Call GET /api/hospital-locator/map-config
-2. Load Google Maps JavaScript API using the frontend's own public browser key
-3. Ask the browser for current location with navigator.geolocation
-4. Call GET /api/hospital-locator/nearby with latitude, longitude, and rangeKm
-5. Render returned hospitals as map markers and list panels
-```
-
-### Add Hospital Profile
-
-Use this only if you also want to maintain local hospital profiles in MongoDB. Google Places nearby search does not require this endpoint.
-
-```http
-POST /api/hospital-locator/hospitals
-```
-
-```json
-{
-  "name": "City Care Hospital",
-  "profilePicture": "https://example.com/city-care.jpg",
-  "address": "MG Road, Bengaluru, Karnataka",
-  "phone": "+919876543210",
-  "latitude": 12.9716,
-  "longitude": 77.5946,
-  "specialties": ["Cardiology", "Orthopedics", "Emergency"],
-  "consultations": ["OPD", "Emergency care", "Video consultation"]
-}
-```
-
-`specialties` and `consultations` can be arrays, JSON strings, or comma-separated text.
-
-### List Hospitals
-
-```http
-GET /api/hospital-locator/hospitals
-```
-
-Optional filters:
-
-```http
-GET /api/hospital-locator/hospitals?specialty=Cardiology
-GET /api/hospital-locator/hospitals?search=emergency
-```
-
-### Find Nearby Hospitals
-
-```http
-GET /api/hospital-locator/nearby?latitude=12.9716&longitude=77.5946&rangeKm=5
-```
-
-Optional specialty filter:
+Nearby hospital example:
 
 ```http
 GET /api/hospital-locator/nearby?latitude=12.9716&longitude=77.5946&rangeKm=5&specialty=Cardiology
 ```
 
-The response comes from Google Places and includes each hospital's profile picture, address, phone number when Google provides it, inferred specialties, consultation options, marker coordinates, Google Maps URL, website URL, and `distanceKm` from the user's current location.
+`rangeKm` must be between `1` and `50`.
 
-`rangeKm` must be between `1` and `50` because Google Places Nearby Search supports a maximum 50 km radius.
+## WebRTC Signaling
 
-Hospital photos are returned as backend URLs:
+The backend uses Socket.IO on the same server for WebRTC signaling.
 
-```txt
-profilePicture: http://localhost:5000/api/hospital-locator/photo?name=...
-```
-
-The backend redirects those URLs to Google Place Photos, keeping the server Places API key out of normal API responses.
-
-Note: Google Places does not always provide exact hospital departments or consultation modes. The backend returns Google place types as `specialties` and infers common consultation options from available data such as phone number, website, and emergency-room place type.
-
-## Doctor Profile
-
-Doctor users create a separate doctor profile after registering and logging in with `role: doctor`. The profile is not authorized for doctor-level actions until at least one qualification document is verified by an admin.
-
-### Create Doctor Profile
-
-Use Postman `Body -> form-data`:
-
-```http
-POST /api/doctors/me
-```
+Connection URL:
 
 ```txt
-specialization: Cardiologist
-experienceYears: 8
-hospitalName: City Care Hospital
-consultationFee: 700
-availabilitySchedule: Mon-Fri 10:00 AM - 4:00 PM
-documentTitles: ["MBBS Degree","MD Cardiology"]
-documents: choose file
-documents: choose another file
+http://localhost:5000
 ```
 
-At least one `documents` file is required. `documentTitles` must have the same number of titles as uploaded files.
-
-### Get My Doctor Profile
-
-```http
-GET /api/doctors/me
-```
-
-### Update Doctor Profile Text Fields
-
-Updating these fields sends the profile back to `pending` verification.
-
-```http
-PATCH /api/doctors/me
-```
-
-```json
-{
-  "specialization": "Dermatologist",
-  "experienceYears": 5,
-  "hospitalName": "MediHub Clinic",
-  "consultationFee": 500,
-  "availabilitySchedule": "Tue-Sat 11:00 AM - 5:00 PM"
-}
-```
-
-### Add More Doctor Documents
-
-```http
-POST /api/doctors/me/documents
-```
-
-Use Postman `Body -> form-data`:
-
-```txt
-documentTitles: ["DNB Dermatology"]
-documents: choose file
-```
-
-Adding new documents does not remove existing doctor authorization. New documents stay `pending`, while already verified document titles remain active in `verifiedTitles`.
-
-### Public Verified Doctors
-
-```http
-GET /api/doctors
-```
-
-Only doctors with at least one verified title are returned here.
-
-Search doctors by verified title:
-
-```http
-GET /api/doctors?title=MBBS
-```
-
-### Admin: Pending Doctors
-
-Admin login required.
-
-```http
-GET /api/doctors/admin/pending
-```
-
-### Admin: Verify Or Reject Doctor
-
-```http
-PATCH /api/doctors/admin/:doctorProfileId/verify
-```
-
-Verify:
-
-```json
-{
-  "verificationStatus": "verified",
-  "isRecommended": true
-}
-```
-
-Verify selected pending documents only:
-
-```json
-{
-  "verificationStatus": "verified",
-  "documentIds": ["665f1a2b3c4d5e6f78901234"],
-  "isRecommended": true
-}
-```
-
-Reject:
-
-```json
-{
-  "verificationStatus": "rejected",
-  "rejectionReason": "Uploaded degree document is not readable"
-}
-```
-
-## MediHub AI Chatbot
-
-Add your Gemini key to `.env`:
-
-```txt
-GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=gemini-2.5-flash
-GEMINI_MAX_OUTPUT_TOKENS=900
-```
-
-The chatbot is protected by login cookies. Patients and doctors can each see only their own chats.
-
-Before the final answer, the backend asks Gemini to classify the message dynamically for health scope, prescription intent, mental health concern, crisis risk, language, and tone. This replaces hard-coded keyword-only checks.
-
-### Chat History
-
-For the left panel history:
-
-```http
-GET /api/ai/chats
-```
-
-### Create New Chat
-
-```http
-POST /api/ai/chats
-```
-
-```json
-{
-  "title": "Prescription help"
-}
-```
-
-### Send Message And Auto-Create Chat
-
-```http
-POST /api/ai/chats/messages
-```
-
-Body -> raw -> JSON:
-
-```json
-{
-  "message": "I am feeling very stressed and I cannot sleep properly. What should I do?"
-}
-```
-
-### Send Message In Existing Chat
-
-```http
-POST /api/ai/chats/:chatId/messages
-```
-
-Body -> raw -> JSON:
-
-```json
-{
-  "message": "Can you explain this in simple Hindi?"
-}
-```
-
-The bot is instructed to reply in the same language and tone as the user.
-
-### Ask About Prescription Or Medical Document
-
-Use Postman `Body -> form-data`:
-
-```http
-POST /api/ai/chats/:chatId/messages
-```
-
-```txt
-message: Please explain this prescription in simple words. What should I ask my doctor?
-attachments: choose prescription image or PDF
-```
-
-Attachments are sent to Gemini for understanding, uploaded to Cloudinary for chat history, and then removed from local temp storage.
-
-### Rename Chat
-
-```http
-PATCH /api/ai/chats/:chatId
-```
-
-```json
-{
-  "title": "Sleep and stress support"
-}
-```
-
-### Delete Chat
-
-```http
-DELETE /api/ai/chats/:chatId
-```
-
-## Appointments And Consultations
-
-### Doctor Creates Availability Slots
-
-Doctor must be verified. Use doctor login cookies.
-
-```http
-POST /api/appointments/slots
-```
-
-```json
-{
-  "slots": [
-    {
-      "startAt": "2026-05-10T10:00:00.000Z",
-      "endAt": "2026-05-10T10:30:00.000Z"
-    },
-    {
-      "startAt": "2026-05-10T10:30:00.000Z",
-      "endAt": "2026-05-10T11:00:00.000Z"
-    }
-  ]
-}
-```
-
-### Patient Checks Doctor Slots
-
-```http
-GET /api/appointments/doctors/:doctorProfileId/slots
-```
-
-Optional:
-
-```http
-GET /api/appointments/doctors/:doctorProfileId/slots?from=2026-05-10T00:00:00.000Z&to=2026-05-11T00:00:00.000Z
-```
-
-### Patient Books Appointment
-
-Only `available` slots can be booked. When a patient books a slot, that slot becomes `booked`, so another patient cannot book the same doctor time.
-
-```http
-POST /api/appointments/book
-```
-
-```json
-{
-  "slotId": "slot_id_here",
-  "patientNotes": "I have fever and throat pain since yesterday.",
-  "trainingConsent": true,
-  "symptoms": [
-    {
-      "description": "Fever",
-      "severity": "moderate",
-      "duration": "1 day"
-    },
-    {
-      "description": "Throat pain",
-      "severity": "mild",
-      "duration": "2 days"
-    }
-  ]
-}
-```
-
-The appointment stores a custom WebRTC consultation link. Set this in `.env`:
-
-```txt
-VIDEO_CALL_BASE_URL=http://localhost:3000/consultation
-```
-
-The saved `videoJoinUrl` becomes:
-
-```txt
-http://localhost:3000/consultation/:appointmentId
-```
-
-### Custom WebRTC Signaling
-
-The backend uses Socket.IO on the same API server for WebRTC signaling.
-
-Frontend connection:
+Client example:
 
 ```js
 import { io } from "socket.io-client";
@@ -540,7 +272,7 @@ const socket = io("http://localhost:5000", {
 });
 ```
 
-If you are not using cookies, pass the access token:
+If cookies are not available:
 
 ```js
 const socket = io("http://localhost:5000", {
@@ -550,158 +282,54 @@ const socket = io("http://localhost:5000", {
 });
 ```
 
-Join consultation room:
+Events:
 
 ```js
-socket.emit("consultation:join", { appointmentId }, (response) => {
-  if (!response.ok) {
-    console.log(response.message);
-  }
-});
-```
-
-WebRTC signaling events:
-
-```js
+socket.emit("consultation:join", { appointmentId }, callback);
 socket.emit("webrtc:offer", { appointmentId, offer });
 socket.emit("webrtc:answer", { appointmentId, answer });
 socket.emit("webrtc:ice-candidate", { appointmentId, candidate });
 
-socket.on("webrtc:offer", ({ offer }) => {});
-socket.on("webrtc:answer", ({ answer }) => {});
-socket.on("webrtc:ice-candidate", ({ candidate }) => {});
-socket.on("consultation:peer-joined", ({ userId, role }) => {});
-socket.on("consultation:peer-left", ({ userId }) => {});
+socket.on("consultation:peer-joined", handler);
+socket.on("consultation:peer-left", handler);
+socket.on("webrtc:offer", handler);
+socket.on("webrtc:answer", handler);
+socket.on("webrtc:ice-candidate", handler);
 ```
 
-Only the appointment patient, assigned doctor, or admin can join that appointment signaling room.
+Only the appointment patient, assigned doctor, or admin can join a consultation room. The backend relays signaling only; media streams are handled by browser WebRTC.
 
-### My Appointments
+## File Upload Flow
 
-Patient sees their bookings. Doctor sees assigned consultations. Admin sees all.
-
-```http
-GET /api/appointments/me
-```
-
-### Appointment Details
-
-Only the patient, assigned doctor, or admin can view it.
-
-```http
-GET /api/appointments/:appointmentId
-```
-
-### Patient Adds More Symptoms Or Notes
-
-```http
-PATCH /api/appointments/:appointmentId/symptoms
-```
-
-```json
-{
-  "patientNotes": "Now I also have a dry cough.",
-  "symptoms": [
-    {
-      "description": "Dry cough",
-      "severity": "mild",
-      "duration": "6 hours"
-    }
-  ]
-}
-```
-
-### Patient Uploads Reports
-
-Use Postman `Body -> form-data`:
-
-```http
-POST /api/appointments/:appointmentId/reports
-```
+Uploaded files are temporarily stored in:
 
 ```txt
-titles: ["Blood report","X-ray"]
-reports: choose file
-reports: choose another file
+public/temp
 ```
 
-### Doctor Updates Consultation
+Then they are uploaded to Cloudinary and removed locally. MongoDB stores the Cloudinary URL and metadata.
 
-```http
-PATCH /api/appointments/:appointmentId/doctor-notes
-```
+## Documentation
 
-```json
-{
-  "doctorDiagnosis": "Likely viral upper respiratory infection",
-  "doctorNotes": "Advised rest, fluids, and follow-up if fever persists.",
-  "meetingTranscript": "Patient reported fever, sore throat, and dry cough. No breathing difficulty.",
-  "status": "completed"
-}
-```
+- [Route list](./routelist.md)
+- [API data flow](./API_DATA_FLOW.md)
 
-### Doctor Uploads Consultation Files
+## Security Notes
 
-Use Postman `Body -> form-data`:
+- Do not commit `.env`.
+- Keep backend API keys server-side.
+- Use HTTP-only cookies for authentication.
+- Restrict browser Google Maps keys by HTTP referrer.
+- Restrict server Google Places keys by API usage where possible.
+- Medical documents, AI prompts, location data, and consultation data should be treated as sensitive.
 
-```http
-POST /api/appointments/:appointmentId/doctor-files
-```
-
-```txt
-titles: ["Diet advice PDF"]
-files: choose file
-```
-
-### Doctor Generates AI Draft
-
-This creates consultation notes and a prescription draft. It is visible as draft for the doctor review flow.
-
-```http
-POST /api/appointments/:appointmentId/ai-draft
-```
-
-### Doctor Approves Prescription
-
-Only after approval should the prescription be shared with the patient.
-
-```http
-PATCH /api/appointments/:appointmentId/prescription/approve
-```
-
-```json
-{
-  "approvedText": "Final doctor-approved prescription text here."
-}
-```
-
-### Doctor Emergency Cancellation
-
-Cancels the booking, marks the slot as cancelled, and queues in-app plus email notification records.
-
-```http
-PATCH /api/appointments/:appointmentId/cancel-by-doctor
-```
-
-```json
-{
-  "reason": "Emergency surgery case"
-}
-```
-
-### Notifications
-
-Appointment booking creates 10-minute reminder notification records for both patient and doctor.
-
-```http
-GET /api/appointments/notifications
-```
-
-## Old Atlas Index Fix
-
-If MongoDB returns `avatar already exists`, your Atlas `users` collection still has an old unique index from a previous schema. Run:
+## Scripts
 
 ```bash
-npm run db:indexes
-npm run db:drop-avatar-index
+npm run dev
+npm start
 ```
+
+## License
+
+This project is currently private/internal. Add a license before public distribution.
