@@ -38,11 +38,8 @@ coverage/
 *.tsbuildinfo
 
 # --- Backend Runtime Files ---
-public/temp/*
-!public/temp/.gitkeep
 uploads/
 tmp/
-temp/
 logs/
 *.log
 
