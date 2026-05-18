@@ -104,3 +104,5 @@ idea/
 # --- Misc Local ---
 .local/
 .history/
+
+frontend
