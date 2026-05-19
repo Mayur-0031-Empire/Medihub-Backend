@@ -6,6 +6,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { deleteLocalFiles } from "../utils/deleteLocalFiles.js";
+import { decodeAuthPayload } from "../utils/authPayloadEncoding.js";
 
 const issueTokens = async (user, res) => {
   const accessToken = signAccessToken(user);
@@ -19,7 +20,13 @@ const issueTokens = async (user, res) => {
   return { accessToken, refreshToken };
 };
 
+const authResponsePayload = (user, tokens) => ({
+  user,
+  accessToken: tokens.accessToken
+});
+
 const register = asyncHandler(async (req, res) => {
+    const body = decodeAuthPayload(req.body);
     const {
       firstName,
       lastName,
@@ -29,7 +36,7 @@ const register = asyncHandler(async (req, res) => {
       phone,
       password,
       confirmPassword
-    } = req.body;
+    } = body;
     const photoLocalPath = req.file?.path || req.files?.photo?.[0]?.path;
 
     if ([firstName, lastName, username, role, email, phone, password, confirmPassword].some((field) => !field?.trim())) {
@@ -84,16 +91,19 @@ const register = asyncHandler(async (req, res) => {
       photo: photo.url
     });
 
-    await issueTokens(user, res);
+    const tokens = await issueTokens(user, res);
 
     const createdUser = await User.findById(user._id).select("-password -refreshToken");
 
-    return res.status(201).json(new ApiResponse(201, "User registered successfully", createdUser));
+    return res.status(201).json(
+      new ApiResponse(201, "User registered successfully", authResponsePayload(createdUser, tokens))
+    );
 });
 
 const login = async (req, res, next) => {
   try {
-    const { identifier, usernameOrEmail, username, email, password } = req.body;
+    const body = decodeAuthPayload(req.body);
+    const { identifier, usernameOrEmail, username, email, password } = body;
     const loginId = identifier || usernameOrEmail || username || email;
 
     if (!loginId || !password) {
@@ -108,9 +118,12 @@ const login = async (req, res, next) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    await issueTokens(user, res);
+    const tokens = await issueTokens(user, res);
+    const safeUser = user.toObject();
+    delete safeUser.password;
+    delete safeUser.refreshToken;
 
-    res.status(200).json(new ApiResponse(200, "Logged in successfully", user));
+    res.status(200).json(new ApiResponse(200, "Logged in successfully", authResponsePayload(safeUser, tokens)));
   } catch (error) {
     next(error);
   }
