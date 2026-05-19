@@ -7,6 +7,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { deleteLocalFiles } from "../utils/deleteLocalFiles.js";
 import { decodeAuthPayload } from "../utils/authPayloadEncoding.js";
+import { appendOAuthResult } from "../utils/oauth.js";
 
 const issueTokens = async (user, res) => {
   const accessToken = signAccessToken(user);
@@ -129,6 +130,22 @@ const login = async (req, res, next) => {
   }
 };
 
+const oauthCallback = asyncHandler(async (req, res) => {
+  const { redirectUri } = req.oauthState || {};
+  const tokens = await issueTokens(req.user, res);
+  const safeUser = req.user.toObject ? req.user.toObject() : { ...req.user };
+  delete safeUser.password;
+  delete safeUser.refreshToken;
+
+  return res.redirect(
+    appendOAuthResult(redirectUri, {
+      accessToken: tokens.accessToken,
+      provider: "google",
+      role: safeUser.role,
+    }),
+  );
+});
+
 const refresh = async (req, res, next) => {
   try {
     const token = req.cookies.refreshToken || req.body?.refreshToken;
@@ -172,4 +189,4 @@ const logout = async (req, res, next) => {
   }
 };
 
-export { register, login, refresh, logout };
+export { register, login, oauthCallback, refresh, logout };

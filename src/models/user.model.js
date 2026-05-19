@@ -85,6 +85,17 @@ const userSchema = new mongoose.Schema(
     refreshToken: {
       type: String,
       select: false
+    },
+    authProvider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local"
+    },
+    googleId: {
+      type: String,
+      trim: true,
+      sparse: true,
+      unique: true
     }
   },
   {
