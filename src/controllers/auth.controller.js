@@ -161,9 +161,9 @@ const refresh = async (req, res, next) => {
       return res.status(401).json({ message: "Invalid refresh token" });
     }
 
-    await issueTokens(user, res);
+    const tokens = await issueTokens(user, res);
 
-    res.status(200).json(new ApiResponse(200, "Token refreshed successfully"));
+    res.status(200).json(new ApiResponse(200, "Token refreshed successfully", { accessToken: tokens.accessToken }));
   } catch (error) {
     next(error);
   }
